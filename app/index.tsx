@@ -339,7 +339,9 @@ useEffect(() => {
             <View style={styles.sectionContainer}>
               <View style={styles.sectionHeader}>
                 <Text style={styles.sectionTitle}>Upcoming Workouts</Text>
-                <TouchableOpacity>
+                <TouchableOpacity
+                onPress={()=>{router.push("/workout")}}
+                >
                   <Text style={styles.seeAllText}>See All</Text>
                 </TouchableOpacity>
               </View>

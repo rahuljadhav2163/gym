@@ -41,7 +41,7 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://192.168.1.6:5000/api/loginuser', {
+      const response = await fetch('http://192.168.1.3:5000/api/loginuser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -55,19 +55,19 @@ export default function Login() {
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle error responses
+
         throw new Error(data.message || 'Login failed');
       }
 
-      // Store entire user data securely
+
       await SecureStore.setItemAsync('userData', JSON.stringify(data.user));
       
-      // Navigate to next screen or dashboard
-      router.replace('/'); // Adjust the route as needed
+     
+      router.replace('/'); 
 
       Alert.alert('Success', 'Login successful');
     } catch (error) {
-      // Handle different types of errors
+     
       Alert.alert('Login Error', error.message || 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)', // Dark overlay to improve text readability
+    backgroundColor: 'rgba(0,0,0,0.6)', 
   },
   container: {
     flex: 1,

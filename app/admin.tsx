@@ -44,7 +44,7 @@ const AdminDashboard = () => {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://192.168.1.6:5000/api/getAllUsers');
+      const response = await fetch('http://192.168.1.3:5000/api/getAllUsers');
   
       // Check if response status is okay
       if (!response.ok) {

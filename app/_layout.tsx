@@ -13,6 +13,7 @@ export default function RootLayout() {
       <Stack.Screen name="admin" options={{ headerShown: false }}/>
       <Stack.Screen name="activity" options={{ headerShown: false }}/>
       <Stack.Screen name="register" options={{ headerShown: false }}/>
+      <Stack.Screen name="workout" options={{ headerShown: false }}/>
     </Stack>
   );
 }

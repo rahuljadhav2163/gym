@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import Carousel from 'react-native-reanimated-carousel';
 import BottomBar from './bottombar';
-
+import { router } from 'expo-router';
 
 const DIET_PLANS = {
   'Weight Loss': [
@@ -211,7 +211,7 @@ const DIET_PLANS = {
 // Assuming DIET_PLANS is defined elsewhere
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export default function WeeklyDietPlanPage() {
+export default function WeeklyDietPlanPage({ navigation }) {
   const [userGoal, setUserGoal] = useState(null);
   const [dietPlan, setDietPlan] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -226,9 +226,15 @@ export default function WeeklyDietPlanPage() {
           const parsedGoal = JSON.parse(storedGoal);
           setUserGoal(parsedGoal.goal);
           setDietPlan(DIET_PLANS[parsedGoal.goal]);
+        } else {
+          // No user data found in SecureStore
+          setUserGoal(null);
+          setDietPlan(null);
         }
       } catch (error) {
         console.error('Error fetching user goal:', error);
+        setUserGoal(null);
+        setDietPlan(null);
       } finally {
         setLoading(false);
       }
@@ -318,6 +324,45 @@ export default function WeeklyDietPlanPage() {
     );
   }
 
+  if (!userGoal || !dietPlan) {
+    return (
+      <ImageBackground
+        source={{
+          uri: 'https://i.pinimg.com/originals/9d/f2/ad/9df2ad5b95e951936b0c77e15eecd7b8.jpg',
+        }}
+        style={styles.backgroundImage}
+        blurRadius={3}
+      >
+        <View style={styles.overlay}>
+          <LinearGradient
+            colors={['#4A90E2', 'rgba(93, 106, 255, 0.8)']}
+            style={styles.headerContainer}
+          >
+            <View style={styles.headerContent}>
+              <Ionicons name="nutrition" size={30} color="white" />
+              <Text style={styles.headerTitle}>Nutrition Roadmap</Text>
+            </View>
+          </LinearGradient>
+
+          <View style={styles.loginPromptContainer}>
+            <Ionicons name="warning" size={50} color="#FF6B6B" />
+            <Text style={styles.loginPromptTitle}>Login Required</Text>
+            <Text style={styles.loginPromptText}>
+              Please log in and set your fitness goal to view your personalized diet plan.
+            </Text>
+            <TouchableOpacity 
+              style={styles.loginButton}
+              onPress={() => router.push('/login')}
+            >
+              <Text style={styles.loginButtonText}>Go to Login</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+        <BottomBar/>
+      </ImageBackground>
+    );
+  }
+
   return (
     <ImageBackground
       source={{
@@ -382,9 +427,43 @@ export default function WeeklyDietPlanPage() {
   );
 }
 
-
-
 const styles = StyleSheet.create({
+  loginPromptContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+  },
+  loginPromptTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: 'tomato',
+    marginTop: 20,
+    marginBottom: 15,
+  },
+  loginPromptText: {
+    fontSize: 16,
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 25,
+  },
+  loginButton: {
+    backgroundColor: '#4A90E2',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  loginButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
   backgroundImage: {
     flex: 1,
     width: '100%',
