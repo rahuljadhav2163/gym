@@ -321,7 +321,7 @@ export default function WeeklyDietPlanPage() {
   return (
     <ImageBackground
       source={{
-        uri: 'https://i.pinimg.com/originals/c8/ab/61/c8ab614eb7f602cf471e1fdefd06f8a1.jpg',
+        uri: 'https://i.pinimg.com/originals/9d/f2/ad/9df2ad5b95e951936b0c77e15eecd7b8.jpg',
       }}
       style={styles.backgroundImage}
       blurRadius={3}
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.1)', // Adds a semi-transparent white overlay
+    backgroundColor: 'rgba(255,255,255,0.1)', 
   },
 
   dayNavigatorContainer: {

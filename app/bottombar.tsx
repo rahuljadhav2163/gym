@@ -31,7 +31,7 @@ const BottomBar = () => {
         title="Nutrition" 
         iconName="options" 
         route="/activity" 
-        isActive={pathname === ''} 
+        isActive={pathname === '/activity'} 
       />
       <NavButton 
         title="Trainer" 
