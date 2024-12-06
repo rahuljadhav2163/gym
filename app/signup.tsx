@@ -16,7 +16,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as SecureStore from 'expo-secure-store';
-import { router } from 'expo-router';
+import { useRouter } from 'expo-router'; // Use `useRouter` for navigation in Expo Router
 import BottomBar from './bottombar';
 
 const { width, height } = Dimensions.get('window');
@@ -24,38 +24,37 @@ const { width, height } = Dimensions.get('window');
 export default function Login() {
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false); 
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
-  const handleLogin = async () => {
+  const onLogin = async () => {
     if (!mobile || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      Alert.alert('Error', 'Please enter both mobile number and password');
       return;
     }
-  
+
     setIsLoading(true);
+
     try {
-      const response = await fetch('http://192.168.1.3:5000/api/login', {
+      const response = await fetch('http://192.168.1.6:5000/api/adminlogin', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
-        body: JSON.stringify({
-          mobile,
-          password,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile, password }),
       });
+
       const result = await response.json();
-      if (response.ok && result.success === "true") {
-        await SecureStore.setItemAsync('userDatas', JSON.stringify(mobile));
-        Alert.alert('Success', result.message); 
-        router.replace('/admin');
+
+      if (result.success === "true") {
+        // Save user data to SecureStore
+        await SecureStore.setItemAsync('adminData', JSON.stringify(result.data));
+
+        // Navigate to /admin page
+        router.push('/admin');
       } else {
-        Alert.alert('Error', result.message || 'Login failed');
+        Alert.alert('Login Failed', result.message || 'Invalid credentials.');
       }
     } catch (error) {
-      Alert.alert('Error', 'Network error. Please try again.');
-      console.error('Login error:', error);
+      Alert.alert('Error', 'An error occurred during login. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -63,12 +62,12 @@ export default function Login() {
 
   return (
     <ImageBackground
-  source={{
-    uri: 'https://img.freepik.com/premium-photo/man-with-perfect-body-gym-generative-ai_7023-48953.jpg',
-  }}
-  style={styles.backgroundImage}
-  blurRadius={3}
->
+      source={{
+        uri: 'https://img.freepik.com/premium-photo/man-with-perfect-body-gym-generative-ai_7023-48953.jpg',
+      }}
+      style={styles.backgroundImage}
+      blurRadius={3}
+    >
       <View style={styles.overlay}>
         <KeyboardAvoidingView
           style={styles.keyboardAvoidingView}
@@ -84,7 +83,6 @@ export default function Login() {
               </View>
               
               <Text style={styles.headerText}>Admin Access</Text>
-           
 
               <View style={styles.inputContainer}>
                 <View style={styles.inputWrapper}>
@@ -113,7 +111,7 @@ export default function Login() {
 
                 <TouchableOpacity 
                   style={styles.loginButton} 
-                  onPress={handleLogin}
+                  onPress={onLogin}
                 >
                   <LinearGradient 
                     colors={['#4169E1', '#1E40AF']} 

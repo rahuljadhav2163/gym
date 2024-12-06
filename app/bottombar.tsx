@@ -28,9 +28,9 @@ const BottomBar = () => {
         isActive={pathname === '/'} 
       />
       <NavButton 
-        title="Activity" 
+        title="Nutrition" 
         iconName="options" 
-        route="/profile" 
+        route="/activity" 
         isActive={pathname === ''} 
       />
       <NavButton 

@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Text, View, TouchableOpacity, StyleSheet, FlatList, Animated, ImageBackground, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Text, View, TouchableOpacity, StyleSheet, FlatList, Animated, ImageBackground, Dimensions, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as SecureStore from 'expo-secure-store'; // Import SecureStore
 import BottomBar from './bottombar';
 import Header from './header';
 
-// Using the same color scheme as the dashboard
 const colorSchemes = {
   background: ['#1A1A2E', '#16213E'],
   card: ['#4E54C8', '#8F94FB'],
@@ -18,6 +18,8 @@ const colorSchemes = {
 export default function AIGymTrainer() {
   const [workout, setWorkout] = useState(null);
   const [scaleAnim] = useState(new Animated.Value(0));
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
   const workoutPlans = [
     {
       id: 1,
@@ -132,10 +134,30 @@ export default function AIGymTrainer() {
     },
   ];
   
+
+  // Check login status
+  const checkLoginStatus = async () => {
+    try {
+      const userToken = await SecureStore.getItemAsync('userData'); // Replace 'userToken' with your SecureStore key
+      setIsLoggedIn(!!userToken); // If token exists, user is logged in
+    } catch (error) {
+      console.error('Error checking login status:', error);
+    }
+  };
+
+  useEffect(() => {
+    checkLoginStatus();
+  }, []);
+
   const generateWorkout = () => {
+    if (!isLoggedIn) {
+      Alert.alert('Login Required', 'Please log in to access workout plans.');
+      return;
+    }
+
     const randomIndex = Math.floor(Math.random() * workoutPlans.length);
     setWorkout(workoutPlans[randomIndex]);
-    
+
     // Animate the workout card appearance
     Animated.spring(scaleAnim, {
       toValue: 1,
@@ -146,20 +168,20 @@ export default function AIGymTrainer() {
   };
 
   const renderWorkoutDetails = ({ item, index }) => (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.workoutItem,
         {
           opacity: scaleAnim,
           transform: [
-            { 
+            {
               translateX: scaleAnim.interpolate({
                 inputRange: [0, 1],
                 outputRange: [50, 0],
-              })
-            }
-          ]
-        }
+              }),
+            },
+          ],
+        },
       ]}
     >
       <Text style={styles.workoutStep}>• {item}</Text>
@@ -168,27 +190,24 @@ export default function AIGymTrainer() {
 
   return (
     <ImageBackground
-  source={{ uri: 'https://cdn.shopify.com/s/files/1/0552/1565/3035/files/2020Men_Strong_male_bodybuilder_in_the_gym_143177_19_1400x.jpg?v=1615279261' }} // Replace with your image URL
-  style={styles.backgroundImage}
-  blurRadius={2} 
->
-
+      source={{ uri: 'https://cdn.shopify.com/s/files/1/0552/1565/3035/files/2020Men_Strong_male_bodybuilder_in_the_gym_143177_19_1400x.jpg?v=1615279261' }}
+      style={styles.backgroundImage}
+      blurRadius={2}
+    >
       <LinearGradient
-        colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.9)']} // Darkens the background image
+        colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.9)']}
         style={styles.container}
       >
-  
-        
         <View style={styles.content}>
           <Text style={styles.subHeader}>Need a workout plan? 💪</Text>
 
           {workout ? (
-            <Animated.View 
+            <Animated.View
               style={[
                 styles.workoutContainer,
                 {
-                  transform: [{ scale: scaleAnim }]
-                }
+                  transform: [{ scale: scaleAnim }],
+                },
               ]}
             >
               <LinearGradient
@@ -210,7 +229,7 @@ export default function AIGymTrainer() {
             <Text style={styles.noWorkoutText}>Let me generate a workout for you! 🎯</Text>
           )}
 
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={generateWorkout}
             style={styles.generateButtonContainer}
           >
@@ -230,7 +249,6 @@ export default function AIGymTrainer() {
     </ImageBackground>
   );
 }
-
 const styles = StyleSheet.create({
   backgroundImage: {
     flex: 1,

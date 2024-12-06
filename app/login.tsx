@@ -26,37 +26,49 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false); 
 
-  const handleLogin = async () => {
-    if (!mobile || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+  const loginMember = async () => {
+    // Basic input validation
+    if (!mobile.trim()) {
+      Alert.alert('Error', 'Please enter your mobile number');
       return;
     }
-  
+
+    if (!password.trim()) {
+      Alert.alert('Error', 'Please enter your password');
+      return;
+    }
+
     setIsLoading(true);
+
     try {
-      const response = await fetch('http://192.168.1.3:5000/api/login', {
+      const response = await fetch('http://192.168.1.6:5000/api/loginuser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
         body: JSON.stringify({
-          mobile,
-          password,
-        }),
+          phone: mobile,
+          password: password
+        })
       });
-  
-      const result = await response.json();
-      if (response.ok && result.success === "true") {
-        await SecureStore.setItemAsync('userData', JSON.stringify(mobile));
-        Alert.alert('Success', result.message); 
-        router.replace('/');
-      } else {
-        Alert.alert('Error', result.message || 'Login failed');
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Handle error responses
+        throw new Error(data.message || 'Login failed');
       }
+
+      // Store entire user data securely
+      await SecureStore.setItemAsync('userData', JSON.stringify(data.user));
+      
+      // Navigate to next screen or dashboard
+      router.replace('/'); // Adjust the route as needed
+
+      Alert.alert('Success', 'Login successful');
     } catch (error) {
-      Alert.alert('Error', 'Network error. Please try again.');
-      console.error('Login error:', error);
+      // Handle different types of errors
+      Alert.alert('Login Error', error.message || 'An unexpected error occurred');
     } finally {
       setIsLoading(false);
     }
@@ -64,12 +76,12 @@ export default function Login() {
 
   return (
     <ImageBackground
-  source={{
-    uri: 'https://freedesignfile.com/upload/2017/10/Strong-sport-fitness-man-Stock-Photo-05.jpg',
-  }}
-  style={styles.backgroundImage}
-  blurRadius={3}
->
+      source={{
+        uri: 'https://freedesignfile.com/upload/2017/10/Strong-sport-fitness-man-Stock-Photo-05.jpg',
+      }}
+      style={styles.backgroundImage}
+      blurRadius={3}
+    >
       <View style={styles.overlay}>
         <KeyboardAvoidingView
           style={styles.keyboardAvoidingView}
@@ -114,7 +126,7 @@ export default function Login() {
 
                 <TouchableOpacity 
                   style={styles.loginButton} 
-                  onPress={handleLogin}
+                  onPress={loginMember}
                 >
                   <LinearGradient 
                     colors={['#4169E1', '#1E40AF']} 

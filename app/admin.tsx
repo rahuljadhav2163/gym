@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo,useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 const AdminDashboard = () => {
-  // State Management with More Comprehensive Data
+  
   const [stats, setStats] = useState({
     totalMembers: 50,
     newMembers: 5,
@@ -30,25 +30,103 @@ const AdminDashboard = () => {
 
   const [selectedTab, setSelectedTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isAddMemberModalVisible, setAddMemberModalVisible] = useState(false);
-  const [isAddWorkoutModalVisible, setAddWorkoutModalVisible] = useState(false);
-  const [isAddClassModalVisible, setAddClassModalVisible] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [members, setMembers] = useState([]); 
+  const [error, setError] = useState(null);
+  
   const [newMember, setNewMember] = useState({
     name: '',
     email: '',
     membershipType: 'basic'
   });
 
+  const fetchUsers = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('http://192.168.1.6:5000/api/getAllUsers');
   
+      // Check if response status is okay
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+  
+      // Parse JSON data
+      const users = await response.json();
+  
+      // Update states
+      setMembers(users);
+      setStats(prevStats => ({
+        ...prevStats,
+        totalMembers: users.length,
+        activeMembers: users.filter(user => user.goal).length,
+      }));
+      setError(null);
+    } catch (err) {
+      console.error('Fetch Error:', err); // Log error for debugging
+      setError(err.message);
+      Alert.alert('Error', `Could not fetch users: ${err.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+
+  // Initial and refresh data fetch
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+  
+  const [addWorkoutModalVisible, setAddWorkoutModalVisible] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
   const [newWorkout, setNewWorkout] = useState({
-    memberId: null,
-    memberName: '',
-    workoutType: '',
-    duration: '',
-    intensity: 'moderate'
+    date: new Date().toISOString().split('T')[0], // Default to current date
+    workoutName: '',
+    time: '',
+    memberId: null
   });
+
+
+  const handleAddWorkout = () => {
+    if (!newWorkout.workoutName || !newWorkout.time) {
+      Alert.alert('Error', 'Please fill in all workout details');
+      return;
+    }
+  
+    // Find the index of the selected member
+    const memberIndex = members.findIndex(m => m._id === selectedMember._id);
+    
+    if (memberIndex !== -1) {
+      // Create a copy of members array
+      const updatedMembers = [...members];
+      
+      // Ensure workouts array exists
+      if (!updatedMembers[memberIndex].workouts) {
+        updatedMembers[memberIndex].workouts = [];
+      }
+  
+      // Add new workout
+      updatedMembers[memberIndex].workouts.push({
+        date: newWorkout.date,
+        workoutName: newWorkout.workoutName,
+        time: newWorkout.time
+      });
+  
+      // Update members state
+      setMembers(updatedMembers);
+  
+      // Reset and close modal
+      setNewWorkout({
+        date: new Date().toISOString().split('T')[0],
+        workoutName: '',
+        time: '',
+        memberId: null
+      });
+      setAddWorkoutModalVisible(false);
+      setSelectedMember(null);
+    }
+  };
+
 
   const [newClass, setNewClass] = useState({
     name: '',
@@ -58,11 +136,8 @@ const AdminDashboard = () => {
     difficulty: 'beginner'
   });
 
-  const [members, setMembers] = useState([
-    { id: 1, name: 'Ram Kadam', membershipType: 'Premium', joinDate: '2024-01-15', workouts: [] },
-    { id: 2, name: 'Sham Pawar', membershipType: 'Basic', joinDate: '2024-02-20', workouts: [] },
-    { id: 3, name: 'Akshay Kumar', membershipType: 'VIP', joinDate: '2024-03-10', workouts: [] }
-  ]); const [classes, setClasses] = useState([
+
+  const [classes, setClasses] = useState([
     { 
       id: 1, 
       name: 'Cardio Blast', 
@@ -86,59 +161,12 @@ const AdminDashboard = () => {
   // Simulated data refresh
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    setTimeout(() => {
-      // Simulate data fetch or update
-      setRefreshing(false);
-    }, 1000);
+    fetchUsers().then(() => setRefreshing(false));
   }, []);
 
-  const filteredMembers = useMemo(() => {
-    return members.filter(member => 
-      member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      member.membershipType.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [members, searchQuery]);
-
-  // Add Member Function with Enhanced Validation
-  const handleAddMember = () => {
-    if (!newMember.name || !newMember.email) {
-      Alert.alert('Error', 'Please fill in all fields');
-      return;
-    }
-
-    setIsLoading(true);
-    setTimeout(() => {
-      const newMemberData = {
-        ...newMember,
-        id: members.length + 1,
-        joinDate: new Date().toISOString().split('T')[0],
-        workouts: []
-      };
-      setMembers([...members, newMemberData]);
-      setAddMemberModalVisible(false);
-      setNewMember({ name: '', email: '', membershipType: 'basic' });
-      setIsLoading(false);
-    }, 1500);
-  };
-
-  const handleAddWorkout = () => {
-    if (!newWorkout.workoutType || !newWorkout.duration) {
-      Alert.alert('Error', 'Please fill in all workout details');
-      return;
-    }
-
-    const memberIndex = members.findIndex(m => m.id === newWorkout.memberId);
-    if (memberIndex !== -1) {
-      const updatedMembers = [...members];
-      updatedMembers[memberIndex].workouts.push({
-        ...newWorkout,
-        date: new Date().toISOString().split('T')[0]
-      });
-      setMembers(updatedMembers);
-      setAddWorkoutModalVisible(false);
-      setNewWorkout({ memberId: null, memberName: '', workoutType: '', duration: '', intensity: 'moderate' });
-    }
-  };
+  const filteredMembers = members.filter(member => 
+    member.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
 
   const handleAddClass = () => {
@@ -160,15 +188,15 @@ const AdminDashboard = () => {
   // Render Dashboard with Gradient Cards
   const renderDashboard = () => (
     <ScrollView 
-    style={styles.dashboardContainer}
-    refreshControl={
-      <RefreshControl
-        refreshing={refreshing}
-        onRefresh={onRefresh}
-        colors={['#3498db', '#2ecc71']}
-      />
-    }
-  >
+      style={styles.dashboardContainer}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={['#3498db', '#2ecc71']}
+        />
+      }
+    >
       <View style={styles.statsRow}>
         <LinearGradient 
           colors={['#3498db', '#2980b9']} 
@@ -187,9 +215,9 @@ const AdminDashboard = () => {
           start={{x: 0, y: 0}}
           end={{x: 1, y: 1}}
         >
-          <Ionicons name="cash" size={30} color="white" />
-          <Text style={styles.statTitle}>Monthly Revenue</Text>
-          <Text style={styles.statValue}>${stats.revenue.toLocaleString()}</Text>
+          <Ionicons name="fitness" size={30} color="white" />
+          <Text style={styles.statTitle}>Active Members</Text>
+          <Text style={styles.statValue}>{stats.activeMembers}</Text>
         </LinearGradient>
       </View>
 
@@ -200,9 +228,9 @@ const AdminDashboard = () => {
           start={{x: 0, y: 0}}
           end={{x: 1, y: 1}}
         >
-          <Ionicons name="add-circle" size={30} color="white" />
-          <Text style={styles.statTitle}>New Members</Text>
-          <Text style={styles.statValue}>{stats.newMembers}</Text>
+          <Ionicons name="cash" size={30} color="white" />
+          <Text style={styles.statTitle}>Monthly Revenue</Text>
+          <Text style={styles.statValue}>${stats.revenue.toLocaleString()}</Text>
         </LinearGradient>
 
         <LinearGradient 
@@ -211,141 +239,151 @@ const AdminDashboard = () => {
           start={{x: 0, y: 0}}
           end={{x: 1, y: 1}}
         >
-          <Ionicons name="fitness" size={30} color="white" />
+          <Ionicons name="calendar" size={30} color="white" />
           <Text style={styles.statTitle}>Active Classes</Text>
           <Text style={styles.statValue}>{stats.activeClasses}</Text>
         </LinearGradient>
       </View>
-
-      {/* Enhanced Chart Section */}
-      <View style={styles.chartSection}>
-        <Text style={styles.chartTitle}>Active Classes</Text>
-        {classes.map(classItem => (
-          <View key={classItem.id} style={styles.classItem}>
-            <View>
-              <Text style={styles.className}>{classItem.name}</Text>
-              <Text style={styles.classDetails}>
-                {classItem.instructor} | {classItem.schedule}
-              </Text>
-            </View>
-            <View style={styles.classEnrollment}>
-              <Text style={styles.enrollmentText}>
-                {classItem.currentEnrollment}/{classItem.capacity}
-              </Text>
-            </View>
-          </View>
-        ))}
-      </View>
     </ScrollView>
   );
-
+  
 
   // Render Members with Enhanced UI
   const renderMembers = () => (
     <View style={styles.membersContainer}>
+      {/* Existing search input */}
       <TextInput
         style={styles.searchInput}
-        placeholder="Search members..."
+        placeholder="Search members by name..."
         value={searchQuery}
         onChangeText={setSearchQuery}
         placeholderTextColor="#7f8c8d"
       />
-
-      <TouchableOpacity 
-        style={styles.addMemberButton}
-        onPress={() => setAddMemberModalVisible(true)}
+  
+  {isLoading ? (
+      <ActivityIndicator size="large" color="#3498db" />
+    ) : error ? (
+      <Text style={styles.errorText}>{error}</Text>
+    ) : (
+      <ScrollView
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#3498db', '#2ecc71']}
+          />
+        }
       >
-        <Ionicons name="add-circle" size={24} color="white" />
-        <Text style={styles.addMemberText}>Add New Member</Text>
-      </TouchableOpacity>
-
-      <ScrollView>
-        {filteredMembers.map(member => (
-          <View key={member.id} style={styles.memberCard}>
-            <View style={styles.memberInfo}>
-              <Text style={styles.memberName}>{member.name}</Text>
-              <Text style={styles.memberDetails}>
-                {member.membershipType} | Joined: {member.joinDate}
-              </Text>
-              <TouchableOpacity
-                style={styles.addWorkoutButton}
+          {filteredMembers.map(member => (
+          <View key={member._id} style={styles.enhancedMemberCard}>
+              <View style={styles.memberCardHeader}>
+                <View style={styles.memberAvatarContainer}>
+                  <Text style={styles.memberAvatarText}>
+                    {member.name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.memberHeaderInfo}>
+                  <Text style={styles.memberCardName}>{member.name}</Text>
+                  <Text style={styles.memberCardMembership}>
+                    {member.membershipType?.toUpperCase() || 'BASIC'} Membership
+                  </Text>
+                </View>
+                <View style={styles.memberCardBadge}>
+                  <Ionicons name="fitness" size={20} color="#3498db" />
+                </View>
+              </View>
+              
+              <View style={styles.memberCardBody}>
+                <View style={styles.memberCardStatsContainer}>
+                  <View style={styles.memberCardStat}>
+                    <Text style={styles.memberCardStatLabel}>Goal</Text>
+                    <Text style={styles.memberCardStatValue}>
+                      {member.goal || 'Not Set'}
+                    </Text>
+                  </View>
+                  <View style={styles.memberCardStat}>
+                    <Text style={styles.memberCardStatLabel}>Height</Text>
+                    <Text style={styles.memberCardStatValue}>
+                      {member.height} cm
+                    </Text>
+                  </View>
+                  <View style={styles.memberCardStat}>
+                    <Text style={styles.memberCardStatLabel}>Weight</Text>
+                    <Text style={styles.memberCardStatValue}>
+                      {member.weight} kg
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              
+              <View style={styles.memberCardFooter}>
+              <TouchableOpacity 
+                style={styles.memberCardAction}
                 onPress={() => {
-                  setNewWorkout({ 
-                    memberId: member.id, 
-                    memberName: member.name, 
-                    workoutType: '', 
-                    duration: '', 
-                    intensity: 'moderate' 
-                  });
+                  setSelectedMember(member);
                   setAddWorkoutModalVisible(true);
                 }}
               >
-                <Ionicons name="fitness" size={18} color="#3498db" />
-                <Text style={styles.addWorkoutText}>Add Workout</Text>
+                <Ionicons name="add-circle" size={18} color="#2ecc71" />
+                <Text style={styles.memberCardActionText}>Add Workout</Text>
               </TouchableOpacity>
             </View>
           </View>
         ))}
       </ScrollView>
-      <Modal
-        transparent={true}
-        visible={isAddWorkoutModalVisible}
-        animationType="slide"
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add Workout for {newWorkout.memberName}</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Workout Type (e.g., Cardio, Strength)"
-              value={newWorkout.workoutType}
-              onChangeText={(text) => setNewWorkout({...newWorkout, workoutType: text})}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Duration (minutes)"
-              value={newWorkout.duration}
-              onChangeText={(text) => setNewWorkout({...newWorkout, duration: text})}
-              keyboardType="numeric"
-            />
-            <View style={styles.membershipTypeContainer}>
-              {['Light', 'Moderate', 'Intense'].map(intensity => (
-                <TouchableOpacity
-                  key={intensity}
-                  style={[
-                    styles.membershipTypeButton,
-                    newWorkout.intensity.toLowerCase() === intensity.toLowerCase() && 
-                    styles.selectedMembershipType
-                  ]}
-                  onPress={() => setNewWorkout({...newWorkout, intensity: intensity.toLowerCase()})}
-                >
-                  <Text style={[
-                    styles.membershipTypeText, 
-                    newWorkout.intensity.toLowerCase() === intensity.toLowerCase() && 
-                    styles.selectedMembershipTypeText
-                  ]}>
-                    {intensity}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity 
-                style={styles.modalButton}
-                onPress={() => setAddWorkoutModalVisible(false)}
-              >
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.modalButtonPrimary]}
-                onPress={handleAddWorkout}
-              >
-                <Text style={styles.modalButtonTextPrimary}>Add Workout</Text>
-              </TouchableOpacity>
-            </View>
+    )}
+
+<Modal
+      transparent={true}
+      visible={addWorkoutModalVisible}
+      animationType="slide"
+      onRequestClose={() => setAddWorkoutModalVisible(false)}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>
+            Add Workout for {selectedMember?.name}
+          </Text>
+          
+          <TextInput
+            style={styles.input}
+            placeholder="Date"
+            value={newWorkout.date}
+            onChangeText={(text) => setNewWorkout({...newWorkout, date: text})}
+          />
+          
+          <TextInput
+            style={styles.input}
+            placeholder="Workout Name"
+            value={newWorkout.workoutName}
+            onChangeText={(text) => setNewWorkout({...newWorkout, workoutName: text})}
+          />
+          
+          <TextInput
+            style={styles.input}
+            placeholder="Time (e.g., 45 min)"
+            value={newWorkout.time}
+            onChangeText={(text) => setNewWorkout({...newWorkout, time: text})}
+          />
+          
+          <View style={styles.modalButtonContainer}>
+            <TouchableOpacity 
+              style={styles.modalButton}
+              onPress={() => setAddWorkoutModalVisible(false)}
+            >
+              <Text style={styles.modalButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.modalButtonPrimary]}
+              onPress={handleAddWorkout}
+            >
+              <Text style={styles.modalButtonTextPrimary}>Add Workout</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </Modal>
+      </View>
+    </Modal>
     </View>
   );
 
@@ -354,7 +392,6 @@ const AdminDashboard = () => {
     <View style={styles.classesContainer}>
       <TouchableOpacity 
         style={styles.addClassButton}
-        onPress={() => setAddClassModalVisible(true)}
       >
         <Ionicons name="add-circle" size={24} color="white" />
         <Text style={styles.addClassText}>Add New Class</Text>
@@ -381,85 +418,15 @@ const AdminDashboard = () => {
         ))}
       </ScrollView>
 
-      {/* Add Class Modal */}
-      <Modal
-        transparent={true}
-        visible={isAddClassModalVisible}
-        animationType="slide"
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add New Fitness Class</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Class Name"
-              value={newClass.name}
-              onChangeText={(text) => setNewClass({...newClass, name: text})}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Instructor Name"
-              value={newClass.instructor}
-              onChangeText={(text) => setNewClass({...newClass, instructor: text})}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Schedule (e.g., Mon/Wed 6 AM)"
-              value={newClass.schedule}
-              onChangeText={(text) => setNewClass({...newClass, schedule: text})}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Class Capacity"
-              value={newClass.capacity}
-              onChangeText={(text) => setNewClass({...newClass, capacity: text})}
-              keyboardType="numeric"
-            />
-            <View style={styles.membershipTypeContainer}>
-              {['Beginner', 'Intermediate', 'Advanced'].map(difficulty => (
-                <TouchableOpacity
-                  key={difficulty}
-                  style={[
-                    styles.membershipTypeButton,
-                    newClass.difficulty.toLowerCase() === difficulty.toLowerCase() && 
-                    styles.selectedMembershipType
-                  ]}
-                  onPress={() => setNewClass({...newClass, difficulty: difficulty.toLowerCase()})}
-                ><Text style={[
-                  styles.membershipTypeText, 
-                  newClass.difficulty.toLowerCase() === difficulty.toLowerCase() && 
-                  styles.
-                  selectedMembershipTypeText
-                ]}>
-                  {difficulty}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          <View style={styles.modalButtonContainer}>
-            <TouchableOpacity 
-              style={styles.modalButton}
-              onPress={() => setAddClassModalVisible(false)}
-            >
-              <Text style={styles.modalButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.modalButton, styles.modalButtonPrimary]}
-              onPress={handleAddClass}
-            >
-              <Text style={styles.modalButtonTextPrimary}>Add Class</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
+   
+    
   </View>
 );
 
       
       <Modal
         transparent={true}
-        visible={isAddMemberModalVisible}
+       
         animationType="slide"
       >
         <View style={styles.modalContainer}>
@@ -511,7 +478,7 @@ const AdminDashboard = () => {
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.modalButton, styles.modalButtonPrimary]}
-                onPress={handleAddMember}
+                
                 disabled={isLoading}
               >
                 {isLoading ? (
@@ -571,78 +538,104 @@ const AdminDashboard = () => {
     {selectedTab === 'members' && renderMembers()}
     {selectedTab === 'classes' && renderClasses()}
 
-    <Modal
-        transparent={true}
-        visible={isAddMemberModalVisible}
-        animationType="slide"
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add New Member</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Full Name"
-              placeholderTextColor="#b3b3b3"
-              value={newMember.name}
-              onChangeText={(text) => setNewMember({...newMember, name: text})}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Email Address"
-              placeholderTextColor="#b3b3b3"
-              value={newMember.email}
-              onChangeText={(text) => setNewMember({...newMember, email: text})}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-            <View style={styles.membershipTypeContainer}>
-              {['Basic', 'Premium', 'VIP'].map(type => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.membershipTypeButton,
-                    newMember.membershipType.toLowerCase() === type.toLowerCase() && 
-                    styles.selectedMembershipType
-                  ]}
-                  onPress={() => setNewMember({...newMember, membershipType: type.toLowerCase()})}
-                >
-                  <Text style={[
-                    styles.membershipTypeText, 
-                    newMember.membershipType.toLowerCase() === type.toLowerCase() && 
-                    styles.selectedMembershipTypeText
-                  ]}>
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.modalButtonContainer}>
-              <TouchableOpacity 
-                style={styles.modalButton}
-                onPress={() => setAddMemberModalVisible(false)}
-              >
-                <Text style={styles.modalButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.modalButtonPrimary]}
-                onPress={handleAddMember}
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <Text style={styles.modalButtonTextPrimary}>Add Member</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+    
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  enhancedMemberCard: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    marginBottom: 15,
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    padding: 15
+  },
+  memberCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ecf0f1'
+  },
+  memberAvatarContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#3498db',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15
+  },
+  memberAvatarText: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: 'bold'
+  },
+  memberHeaderInfo: {
+    flex: 1
+  },
+  memberCardName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2c3e50'
+  },
+  memberCardMembership: {
+    fontSize: 12,
+    color: '#7f8c8d'
+  },
+  memberCardBadge: {
+    padding: 5,
+    borderRadius: 20,
+    backgroundColor: 'rgba(52, 152, 219, 0.1)'
+  },
+  memberCardBody: {
+    marginBottom: 15
+  },
+  memberCardStatsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between'
+  },
+  memberCardStat: {
+    alignItems: 'center',
+    flex: 1
+  },
+  memberCardStatLabel: {
+    color: '#7f8c8d',
+    fontSize: 12,
+    marginBottom: 5
+  },
+  memberCardStatValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2c3e50'
+  },
+  memberCardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
+    borderTopColor: '#ecf0f1',
+    paddingTop: 10
+  },
+  memberCardAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#f1f2f6'
+  },
+  memberCardActionText: {
+    marginLeft: 8,
+    color: '#3498db',
+    fontWeight: '600'
+  },
   searchInput: {
     backgroundColor: 'white',
     borderRadius: 10,

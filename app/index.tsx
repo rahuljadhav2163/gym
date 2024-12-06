@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState ,useEffect} from 'react';
 import { 
   View, 
   Text, 
@@ -10,7 +10,8 @@ import {
   ImageBackground,
   Dimensions,
   Modal,
-  Platform 
+  Platform, 
+  Alert
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { 
@@ -21,6 +22,7 @@ import {
 } from '@expo/vector-icons';
 import BottomBar from './bottombar';
 import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 
 const { width, height } = Dimensions.get('window');
 
@@ -39,14 +41,29 @@ const FitnessHomeScreen = () => {
   const [modalVisible, setModalVisible] = useState(false);
 
   const [user] = useState({
-    name: 'Alex Rodriguez',
+  
     avatar: 'https://cdn0.iconfinder.com/data/icons/people-and-lifestyle-2/64/fitness-man-lifestyle-avatar-1024.png',
-    fitnessGoal: 'Muscle Gain',
     weeklyProgress: 65,
     caloriesBurned: 450,
     workoutStreak: 12
   });
+  const [userdata, setuserdata] = useState('');
 
+  const fetchUserData = async () => {
+    try {
+        const storedData = await SecureStore.getItemAsync('userData');
+        if (storedData) {
+          setuserdata(JSON.parse(storedData));
+        }
+    } catch (error) {
+        console.error('Error fetching user data:', error);
+        Alert.alert('Error', 'Unable to fetch user data');
+    }
+};
+
+useEffect(() => {
+  fetchUserData();
+}, []);
 
   const workoutCategories = [
     { 
@@ -131,22 +148,6 @@ const FitnessHomeScreen = () => {
       instructor: 'Mike Johnson',
       difficulty: 'Advanced',
       equipment: 'Weights & Resistance Bands'
-    },
-    {
-      name: 'Power Yoga Flow',
-      time: '7:30 AM',
-      duration: '30 min',
-      instructor: 'Sarah Lee',
-      difficulty: 'Intermediate',
-      equipment: 'Yoga Mat'
-    },
-    {
-      name: 'HIIT Cardio Blast',
-      time: '08:00 AM',
-      duration: '20 min',
-      instructor: 'Emma Davis',
-      difficulty: 'Beginner',
-      equipment: 'No Equipment'
     }
   ];
 
@@ -251,9 +252,9 @@ const FitnessHomeScreen = () => {
                     style={styles.avatar} 
                   />
                   <View style={styles.userInfo}>
-                    <Text style={styles.greeting}>Hello, {user.name}</Text>
+                    <Text style={styles.greeting}>Hello, {userdata.name || "User"} </Text>
                     <Text style={styles.subGreeting}>
-                      Ready to {user.fitnessGoal} today?
+                      Ready to {userdata.goal || "fit"} today?
                     </Text>
                   </View>
                 </View>
@@ -269,19 +270,18 @@ const FitnessHomeScreen = () => {
 
             {/* Fitness Stats */}
             <View style={styles.statsContainer}>
-              <Text onPress={()=>{router.push('/admin')}}>Admin</Text>
               <View style={styles.statBox}>
                 <FontAwesome5 name="fire" size={20} color={COLORS.accent} />
                 <Text style={styles.statValue}>{user.caloriesBurned}</Text>
                 <Text style={styles.statLabel}>Calories</Text>
               </View>
               <View style={styles.statBox}>
-                <MaterialCommunityIcons name="calendar-streak" size={20} color={COLORS.primary} />
+                <MaterialCommunityIcons name="calendar" size={20} color={'orange'} />
                 <Text style={styles.statValue}>{user.workoutStreak}</Text>
                 <Text style={styles.statLabel}>Streak</Text>
               </View>
               <View style={styles.statBox}>
-                <MaterialIcons name="trending-up" size={20} color={COLORS.secondary} />
+                <MaterialIcons name="trending-up" size={20} color={"red"} />
                 <Text style={styles.statValue}>{user.weeklyProgress}%</Text>
                 <Text style={styles.statLabel}>Progress</Text>
               </View>
@@ -616,7 +616,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 15,
     padding: 15,
-    marginBottom: 10
+    marginTop: 10
   },
   workoutCardContent: {
     flexDirection: 'row',
