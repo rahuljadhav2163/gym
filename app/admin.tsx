@@ -1,11 +1,11 @@
-import React, { useState, useCallback, useMemo,useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
-  Modal, 
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
   TextInput,
   Alert,
   ActivityIndicator,
@@ -15,7 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 const AdminDashboard = () => {
-  
+
   const [stats, setStats] = useState({
     totalMembers: 50,
     newMembers: 5,
@@ -32,9 +32,9 @@ const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [members, setMembers] = useState([]); 
+  const [members, setMembers] = useState([]);
   const [error, setError] = useState(null);
-  
+
   const [newMember, setNewMember] = useState({
     name: '',
     email: '',
@@ -45,15 +45,15 @@ const AdminDashboard = () => {
     try {
       setIsLoading(true);
       const response = await fetch('http://192.168.1.3:5000/api/getAllUsers');
-  
+
       // Check if response status is okay
       if (!response.ok) {
         throw new Error(`Error ${response.status}: ${response.statusText}`);
       }
-  
+
       // Parse JSON data
       const users = await response.json();
-  
+
       // Update states
       setMembers(users);
       setStats(prevStats => ({
@@ -70,13 +70,13 @@ const AdminDashboard = () => {
       setIsLoading(false);
     }
   };
-  
+
 
   // Initial and refresh data fetch
   useEffect(() => {
     fetchUsers();
   }, []);
-  
+
   const [addWorkoutModalVisible, setAddWorkoutModalVisible] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [newWorkout, setNewWorkout] = useState({
@@ -86,108 +86,92 @@ const AdminDashboard = () => {
     memberId: null
   });
 
+  const [isAddingWorkout, setIsAddingWorkout] = useState(false);
 
-  const handleAddWorkout = () => {
-    if (!newWorkout.workoutName || !newWorkout.time) {
-      Alert.alert('Error', 'Please fill in all workout details');
+  const handleAddWorkout = async () => {
+    if (isAddingWorkout)
       return;
-    }
-  
-    // Find the index of the selected member
-    const memberIndex = members.findIndex(m => m._id === selectedMember._id);
-    
-    if (memberIndex !== -1) {
-      // Create a copy of members array
-      const updatedMembers = [...members];
-      
-      // Ensure workouts array exists
-      if (!updatedMembers[memberIndex].workouts) {
-        updatedMembers[memberIndex].workouts = [];
+
+    setIsAddingWorkout(true);
+
+    try {
+      const workoutPayload = {
+        phone: selectedMember.phone,
+        workout: {
+          type: newWorkout.workoutName,
+          duration: newWorkout.time,
+          workout: newWorkout.workoutName,
+          date: new Date(newWorkout.date).toISOString()
+        }
+      };
+
+      const response = await fetch('http://192.168.1.3:5000/api/addworkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(workoutPayload)
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Failed to add workout');
       }
-  
-      // Add new workout
-      updatedMembers[memberIndex].workouts.push({
-        date: newWorkout.date,
-        workoutName: newWorkout.workoutName,
-        time: newWorkout.time
-      });
-  
-      // Update members state
-      setMembers(updatedMembers);
-  
-      // Reset and close modal
-      setNewWorkout({
-        date: new Date().toISOString().split('T')[0],
-        workoutName: '',
-        time: '',
-        memberId: null
-      });
-      setAddWorkoutModalVisible(false);
-      setSelectedMember(null);
+
+      Alert.alert('Success', 'Workout added successfully');
+      setAddWorkoutModalVisible(false)
+    } catch (error) {
+      console.error('Error adding workout:', error);
+      Alert.alert('Error', error.message || 'Failed to add workout');
+    } finally {
+      setIsAddingWorkout(false);
     }
   };
+ 
 
-
-  const [newClass, setNewClass] = useState({
-    name: '',
-    instructor: '',
-    schedule: '',
-    capacity: '',
-    difficulty: 'beginner'
-  });
-
-
-  const [classes, setClasses] = useState([
-    { 
-      id: 1, 
-      name: 'Cardio Blast', 
-      instructor: 'John Doe', 
-      schedule: 'Mon/Wed 6 AM', 
-      capacity: 20, 
-      currentEnrollment: 15,
-      difficulty: 'intermediate'
-    },
-    { 
-      id: 2, 
-      name: 'Yoga Flow', 
-      instructor: 'Jane Smith', 
-      schedule: 'Tue/Thu 7 PM', 
-      capacity: 15, 
-      currentEnrollment: 12,
-      difficulty: 'beginner'
-    }
-  ]);
-
-  // Simulated data refresh
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchUsers().then(() => setRefreshing(false));
   }, []);
 
-  const filteredMembers = members.filter(member => 
+  const filteredMembers = members.filter(member =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleDeleteUser = async (userId) => {
+    try {
+      const response = await fetch(`http://192.168.1.3:5000/api/deluser/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
 
-  const handleAddClass = () => {
-    if (!newClass.name || !newClass.instructor || !newClass.schedule) {
-      Alert.alert('Error', 'Please fill in all class details');
-      return;
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(responseData.message || 'Failed to delete user');
+      }
+
+      // Remove the deleted user from the members array
+      setMembers(members.filter(member => member._id !== userId));
+
+      Alert.alert('Success', 'User deleted successfully');
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      Alert.alert('Error', error.message || 'Failed to delete user');
     }
-
-    const classToAdd = {
-      ...newClass,
-      id: classes.length + 1,
-      currentEnrollment: 0
-    };
-    setClasses([...classes, classToAdd]);
-    setAddClassModalVisible(false);
-    setNewClass({ name: '', instructor: '', schedule: '', capacity: '', difficulty: 'beginner' });
   };
+
+  const recentlyJoinedUsers = members
+    .sort((a, b) => new Date(b.createdAt || Date.now()) - new Date(a.createdAt || Date.now()))
+    .slice(0, 4);
 
   // Render Dashboard with Gradient Cards
   const renderDashboard = () => (
-    <ScrollView 
+    
+    <ScrollView
       style={styles.dashboardContainer}
       refreshControl={
         <RefreshControl
@@ -198,22 +182,22 @@ const AdminDashboard = () => {
       }
     >
       <View style={styles.statsRow}>
-        <LinearGradient 
-          colors={['#3498db', '#2980b9']} 
+        <LinearGradient
+          colors={['#3498db', '#2980b9']}
           style={styles.statCard}
-          start={{x: 0, y: 0}}
-          end={{x: 1, y: 1}}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
           <Ionicons name="people" size={30} color="white" />
           <Text style={styles.statTitle}>Total Members</Text>
           <Text style={styles.statValue}>{stats.totalMembers}</Text>
         </LinearGradient>
 
-        <LinearGradient 
-          colors={['#2ecc71', '#27ae60']} 
+        <LinearGradient
+          colors={['#2ecc71', '#27ae60']}
           style={styles.statCard}
-          start={{x: 0, y: 0}}
-          end={{x: 1, y: 1}}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
           <Ionicons name="fitness" size={30} color="white" />
           <Text style={styles.statTitle}>Active Members</Text>
@@ -222,36 +206,76 @@ const AdminDashboard = () => {
       </View>
 
       <View style={styles.statsRow}>
-        <LinearGradient 
-          colors={['#9b59b6', '#8e44ad']} 
+        <LinearGradient
+          colors={['#9b59b6', '#8e44ad']}
           style={styles.statCard}
-          start={{x: 0, y: 0}}
-          end={{x: 1, y: 1}}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
           <Ionicons name="cash" size={30} color="white" />
           <Text style={styles.statTitle}>Monthly Revenue</Text>
           <Text style={styles.statValue}>${stats.revenue.toLocaleString()}</Text>
         </LinearGradient>
 
-        <LinearGradient 
-          colors={['#f39c12', '#d35400']} 
+        <LinearGradient
+          colors={['#f39c12', '#d35400']}
           style={styles.statCard}
-          start={{x: 0, y: 0}}
-          end={{x: 1, y: 1}}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
           <Ionicons name="calendar" size={30} color="white" />
           <Text style={styles.statTitle}>Active Classes</Text>
           <Text style={styles.statValue}>{stats.activeClasses}</Text>
         </LinearGradient>
       </View>
+
+      <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Recently join Members</Text>
+          <View style={styles.recentMembersContainer}>
+            {recentlyJoinedUsers.map((user, index) => (
+              <View 
+                key={user._id} 
+                style={[
+                  styles.recentMemberCard, 
+                  index === recentlyJoinedUsers.length - 1 && styles.lastRecentMemberCard
+                ]}
+              >
+                <View style={styles.recentMemberAvatarContainer}>
+                  <LinearGradient
+                    colors={['#6A5ACD', '#5D3FD3']}
+                    style={styles.recentMemberAvatar}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                  >
+                    <Text style={styles.recentMemberAvatarText}>
+                      {user.name.charAt(0).toUpperCase()}
+                    </Text>
+                  </LinearGradient>
+                </View>
+                <View style={styles.recentMemberDetails}>
+                  <Text style={styles.recentMemberName} numberOfLines={1}>
+                    {user.name}
+                  </Text>
+                  <Text style={styles.recentMemberSubtitle}>
+                    {user.membershipType?.toUpperCase() || 'BASIC'} Membership
+                  </Text>
+                  <Text style={styles.recentMemberDate}>
+                    Joined: {new Date(user.createdAt || Date.now()).toLocaleDateString()}
+                  </Text>
+                </View>
+                <TouchableOpacity style={styles.recentMemberAction}>
+                  <Ionicons name="chevron-forward" size={24} color="#5D3FD3" />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        </View>
     </ScrollView>
   );
-  
 
-  // Render Members with Enhanced UI
+
   const renderMembers = () => (
     <View style={styles.membersContainer}>
-      {/* Existing search input */}
       <TextInput
         style={styles.searchInput}
         placeholder="Search members by name..."
@@ -259,21 +283,21 @@ const AdminDashboard = () => {
         onChangeText={setSearchQuery}
         placeholderTextColor="#7f8c8d"
       />
-  
-  {isLoading ? (
-      <ActivityIndicator size="large" color="#3498db" />
-    ) : error ? (
-      <Text style={styles.errorText}>{error}</Text>
-    ) : (
-      <ScrollView
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#3498db', '#2ecc71']}
-          />
-        }
-      >
+
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#3498db" />
+      ) : error ? (
+        <Text style={styles.errorText}>{error}</Text>
+      ) : (
+        <ScrollView
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#3498db', '#2ecc71']}
+            />
+          }
+        >
           {filteredMembers.map(member => (
           <View key={member._id} style={styles.enhancedMemberCard}>
               <View style={styles.memberCardHeader}>
@@ -327,223 +351,377 @@ const AdminDashboard = () => {
                 <Ionicons name="add-circle" size={18} color="#2ecc71" />
                 <Text style={styles.memberCardActionText}>Add Workout</Text>
               </TouchableOpacity>
-            </View>
-          </View>
-        ))}
-      </ScrollView>
-    )}
 
-<Modal
-      transparent={true}
-      visible={addWorkoutModalVisible}
-      animationType="slide"
-      onRequestClose={() => setAddWorkoutModalVisible(false)}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>
-            Add Workout for {selectedMember?.name}
-          </Text>
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Date"
-            value={newWorkout.date}
-            onChangeText={(text) => setNewWorkout({...newWorkout, date: text})}
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Workout Name"
-            value={newWorkout.workoutName}
-            onChangeText={(text) => setNewWorkout({...newWorkout, workoutName: text})}
-          />
-          
-          <TextInput
-            style={styles.input}
-            placeholder="Time (e.g., 45 min)"
-            value={newWorkout.time}
-            onChangeText={(text) => setNewWorkout({...newWorkout, time: text})}
-          />
-          
-          <View style={styles.modalButtonContainer}>
-            <TouchableOpacity 
-              style={styles.modalButton}
-              onPress={() => setAddWorkoutModalVisible(false)}
-            >
-              <Text style={styles.modalButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.modalButton, styles.modalButtonPrimary]}
-              onPress={handleAddWorkout}
-            >
-              <Text style={styles.modalButtonTextPrimary}>Add Workout</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-    </View>
-  );
-
-  
-  const renderClasses = () => (
-    <View style={styles.classesContainer}>
-      <TouchableOpacity 
-        style={styles.addClassButton}
-      >
-        <Ionicons name="add-circle" size={24} color="white" />
-        <Text style={styles.addClassText}>Add New Class</Text>
-      </TouchableOpacity>
-
-      <ScrollView>
-        {classes.map(classItem => (
-          <View key={classItem.id} style={styles.classCard}>
-            <View style={styles.classInfo}>
-              <Text style={styles.className}>{classItem.name}</Text>
-              <Text style={styles.classDetails}>
-                Instructor: {classItem.instructor} | {classItem.schedule}
-              </Text>
-              <View style={styles.classMetrics}>
-                <Text style={styles.classMetricText}>
-                  Capacity: {classItem.currentEnrollment}/{classItem.capacity}
-                </Text>
-                <Text style={styles.classMetricText}>
-                  Difficulty: {classItem.difficulty}
-                </Text>
+                <TouchableOpacity
+                  style={[styles.memberCardAction, styles.deleteMemberAction]}
+                  onPress={() => {
+                    Alert.alert(
+                      'Confirm Deletion',
+                      `Are you sure you want to delete ${member.name}?`,
+                      [
+                        {
+                          text: 'Cancel',
+                          style: 'cancel'
+                        },
+                        {
+                          text: 'Delete',
+                          style: 'destructive',
+                          onPress: () => handleDeleteUser(member._id)
+                        }
+                      ]
+                    );
+                  }}
+                >
+                  <Ionicons name="trash" size={18} color="#e74c3c" />
+                  <Text style={[styles.memberCardActionText, { color: '#e74c3c' }]}>Delete</Text>
+                </TouchableOpacity>
               </View>
             </View>
-          </View>
-        ))}
-      </ScrollView>
-
-   
-    
-  </View>
-);
-
-      
+          ))}
+        </ScrollView>
+      )}
       <Modal
         transparent={true}
-       
+        visible={addWorkoutModalVisible}
         animationType="slide"
+        onRequestClose={() => setAddWorkoutModalVisible(false)}
       >
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add New Member</Text>
+            <Text style={styles.modalTitle}>
+              Add Workout for {selectedMember?.name}
+            </Text>
+
             <TextInput
               style={styles.input}
-              placeholder="Full Name"
-              placeholderTextColor="#b3b3b3"
-              value={newMember.name}
-              onChangeText={(text) => setNewMember({...newMember, name: text})}
+              placeholder="Date"
+              value={newWorkout.date}
+              onChangeText={(text) => setNewWorkout({ ...newWorkout, date: text })}
             />
+
             <TextInput
               style={styles.input}
-              placeholder="Email Address"
-              placeholderTextColor="#b3b3b3"
-              value={newMember.email}
-              onChangeText={(text) => setNewMember({...newMember, email: text})}
-              keyboardType="email-address"
-              autoCapitalize="none"
+              placeholder="Workout Name"
+              value={newWorkout.workoutName}
+              onChangeText={(text) => setNewWorkout({ ...newWorkout, workoutName: text })}
             />
-            <View style={styles.membershipTypeContainer}>
-              {['Basic', 'Premium', 'VIP'].map(type => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.membershipTypeButton,
-                    newMember.membershipType.toLowerCase() === type.toLowerCase() && 
-                    styles.selectedMembershipType
-                  ]}
-                  onPress={() => setNewMember({...newMember, membershipType: type.toLowerCase()})}
-                >
-                  <Text style={[
-                    styles.membershipTypeText, 
-                    newMember.membershipType.toLowerCase() === type.toLowerCase() && 
-                    styles.selectedMembershipTypeText
-                  ]}>
-                    {type}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+
+            <TextInput
+              style={styles.input}
+              placeholder="Time (e.g., 45 min)"
+              value={newWorkout.time}
+              onChangeText={(text) => setNewWorkout({ ...newWorkout, time: text })}
+            />
+
             <View style={styles.modalButtonContainer}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.modalButton}
-                onPress={() => setAddMemberModalVisible(false)}
+                onPress={() => setAddWorkoutModalVisible(false)}
               >
                 <Text style={styles.modalButtonText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 style={[styles.modalButton, styles.modalButtonPrimary]}
-                
-                disabled={isLoading}
+                onPress={handleAddWorkout}
               >
-                {isLoading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <Text style={styles.modalButtonTextPrimary}>Add Member</Text>
-                )}
+                <Text style={styles.modalButtonTextPrimary}>Add Workout</Text>
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-    
+    </View>
+  );
 
-  // Main Render with Gradient Header
+
+
+
+  <Modal
+    transparent={true}
+
+    animationType="slide"
+  >
+    <View style={styles.modalContainer}>
+      <View style={styles.modalContent}>
+        <Text style={styles.modalTitle}>Add New Member</Text>
+        <TextInput
+          style={styles.input}
+          placeholder="Full Name"
+          placeholderTextColor="#b3b3b3"
+          value={newMember.name}
+          onChangeText={(text) => setNewMember({ ...newMember, name: text })}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Email Address"
+          placeholderTextColor="#b3b3b3"
+          value={newMember.email}
+          onChangeText={(text) => setNewMember({ ...newMember, email: text })}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <View style={styles.membershipTypeContainer}>
+          {['Basic', 'Premium', 'VIP'].map(type => (
+            <TouchableOpacity
+              key={type}
+              style={[
+                styles.membershipTypeButton,
+                newMember.membershipType.toLowerCase() === type.toLowerCase() &&
+                styles.selectedMembershipType
+              ]}
+              onPress={() => setNewMember({ ...newMember, membershipType: type.toLowerCase() })}
+            >
+              <Text style={[
+                styles.membershipTypeText,
+                newMember.membershipType.toLowerCase() === type.toLowerCase() &&
+                styles.selectedMembershipTypeText
+              ]}>
+                {type}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+        <View style={styles.modalButtonContainer}>
+          <TouchableOpacity
+            style={styles.modalButton}
+            onPress={() => setAddMemberModalVisible(false)}
+          >
+            <Text style={styles.modalButtonText}>Cancel</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.modalButton, styles.modalButtonPrimary]}
+
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text style={styles.modalButtonTextPrimary}>Add Member</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  </Modal>
+
+
   return (
     <View style={styles.container}>
-    <LinearGradient 
-      colors={['#2c3e50', '#34495e']} 
-      style={styles.header}
-      start={{x: 0, y: 0}}
-      end={{x: 1, y: 1}}
-    >
-      <Text style={styles.headerTitle}>Gym Management Dashboard</Text>
-    </LinearGradient>
+      <LinearGradient
+        colors={['#2c3e50', '#34495e']}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <Text style={styles.headerTitle}>Gym Management Dashboard</Text>
+      </LinearGradient>
 
-    <View style={styles.tabContainer}>
-      {[
-        { key: 'dashboard', label: 'Dashboard', icon: 'stats-chart' },
-        { key: 'members', label: 'Members', icon: 'people' },
-        { key: 'classes', label: 'Classes', icon: 'fitness' }
-      ].map(tab => (
-        <TouchableOpacity 
-          key={tab.key}
-          style={[
-            styles.tab, 
-            selectedTab === tab.key && styles.activeTab
-          ]}
-          onPress={() => setSelectedTab(tab.key)}
-        >
-          <Ionicons 
-            name={tab.icon} 
-            size={20} 
-            color={selectedTab === tab.key ? '#3498db' : '#7f8c8d'} 
-          />
-          <Text style={[
-            styles.tabText, 
-            selectedTab === tab.key && styles.activeTabText
-          ]}>
-            {tab.label}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </View>
+      <View style={styles.tabContainer}>
+        {[
+          { key: 'dashboard', label: 'Dashboard', icon: 'stats-chart' },
+          { key: 'members', label: 'Members', icon: 'people' }
+        ].map(tab => (
+          <TouchableOpacity
+            key={tab.key}
+            style={[
+              styles.tab,
+              selectedTab === tab.key && styles.activeTab
+            ]}
+            onPress={() => setSelectedTab(tab.key)}
+          >
+            <Ionicons
+              name={tab.icon}
+              size={20}
+              color={selectedTab === tab.key ? '#3498db' : '#7f8c8d'}
+            />
+            <Text style={[
+              styles.tabText,
+              selectedTab === tab.key && styles.activeTabText
+            ]}>
+              {tab.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+      {selectedTab === 'dashboard' && renderDashboard()}
+      {selectedTab === 'members' && renderMembers()}
 
-    {selectedTab === 'dashboard' && renderDashboard()}
-    {selectedTab === 'members' && renderMembers()}
-    {selectedTab === 'classes' && renderClasses()}
 
-    
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  dashboardContainer: {
+    flex: 1,
+    backgroundColor: '#F5F5F7',
+  },
+  quickStatsContainer: {
+    paddingHorizontal: 15,
+    paddingTop: 15,
+  },
+  quickStatsCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderRadius: 15,
+    padding: 15,
+    shadowColor: '#5D3FD3',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  quickStatItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  quickStatTitle: {
+    color: 'white',
+    fontSize: 12,
+    marginTop: 5,
+    opacity: 0.8,
+  },
+  quickStatValue: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 5,
+  },
+  sectionContainer: {
+    marginTop: 20,
+    paddingHorizontal: 15,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+    marginBottom: 15,
+  },
+  recentMembersContainer: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  recentMemberCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+  },
+  lastRecentMemberCard: {
+    borderBottomWidth: 0,
+  },
+  recentMemberAvatarContainer: {
+    marginRight: 15,
+  },
+  recentMemberAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#5D3FD3',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  recentMemberAvatarText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  recentMemberDetails: {
+    flex: 1,
+  },
+  recentMemberName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2C3E50',
+  },
+  recentMemberSubtitle: {
+    fontSize: 12,
+    color: '#7F8C8D',
+    marginTop: 3,
+  },
+  recentMemberDate: {
+    fontSize: 11,
+    color: '#95A5A6',
+    marginTop: 3,
+  },
+  recentMemberAction: {
+    padding: 5,
+  },
+  recentlyJoinedContainer: {
+    marginTop: 20,
+    paddingHorizontal: 15,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#2c3e50',
+  },
+  recentUserCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f7f8fa',
+    borderRadius: 10,
+    padding: 15,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  recentUserAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#3498db',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 15,
+  },
+  recentUserAvatarText: {
+    color: 'white',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  recentUserInfo: {
+    flex: 1,
+  },
+  recentUserName: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2c3e50',
+  },
+  recentUserDetail: {
+    fontSize: 14,
+    color: '#7f8c8d',
+  },
+  recentUserDate: {
+    fontSize: 12,
+    color: '#95a5a6',
+    marginTop: 5,
+  },
+  deleteMemberAction: {
+    marginLeft: 10,
+    borderColor: '#e74c3c',
+    borderWidth: 1,
+    borderRadius: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
   enhancedMemberCard: {
     backgroundColor: 'white',
     borderRadius: 15,
@@ -659,70 +837,11 @@ const styles = StyleSheet.create({
     marginLeft: 5,
     fontWeight: '600'
   },
-  classesContainer: {
-    flex: 1,
-    padding: 15
-  },
-  addClassButton: {
-    backgroundColor: '#2ecc71',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginBottom: 15
-  },
-  addClassText: {
-    color: 'white',
-    fontWeight: 'bold',
-    marginLeft: 8
-  },
-  classCard: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 10,
-    elevation: 2
-  },
-  classInfo: {
-    flex: 1
-  },
-  className: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5
-  },
-  classDetails: {
-    color: '#7f8c8d',
-    marginBottom: 10
-  },
-  classMetrics: {
-    flexDirection: 'row',
-    justifyContent: 'space-between'
-  },
-  classMetricText: {
-    color: '#3498db',
-    fontWeight: '600'
-  },
-  classItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ecf0f1'
-  },
-  classEnrollment: {
-    backgroundColor: '#3498db',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 5
-  },
   enrollmentText: {
     color: 'white',
     fontWeight: 'bold'
   },
-  
+
   container: {
     flex: 1,
     backgroundColor: '#f4f6f9'

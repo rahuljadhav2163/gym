@@ -47,7 +47,7 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://192.168.1.6:5000/api/createmember', {
+      const response = await fetch('http://192.168.1.3:5000/api/createmember', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -71,7 +71,6 @@ export default function Register() {
 
       console.log('Registration Successful:', responseData);
 
-      // Securely store user data
       await SecureStore.setItemAsync('userData', JSON.stringify(responseData.user));
 
       setName('');
@@ -81,7 +80,6 @@ export default function Register() {
       setWeight('');
       setFitnessGoal('');
 
-      // Navigate to Home screen
       router.push('/');
     } catch (error) {
       console.error('Registration Error:', error);
@@ -202,7 +200,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)', // Overlay to improve readability
+    backgroundColor: 'rgba(0,0,0,0.6)', 
   },
   scrollContainer: {
     flexGrow: 1,

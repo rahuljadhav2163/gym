@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   },
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)', 
+    backgroundColor: 'rgba(0,0,0,0.6)', // Dark overlay to improve text readability
   },
   container: {
     flex: 1,
