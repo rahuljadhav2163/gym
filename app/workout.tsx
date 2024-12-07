@@ -65,7 +65,7 @@ export default function Workout() {
 
   const fetchWorkoutData = async (phone) => {
     try {
-      const response = await fetch(`http://192.168.1.3:5000/api/getworkouts/${phone}`);
+      const response = await fetch(`https://gym-backend-0o9y.onrender.com/api/getworkouts/${phone}`);
       const data = await response.json();
   
       if (response.ok) {

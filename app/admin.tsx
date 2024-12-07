@@ -44,7 +44,7 @@ const AdminDashboard = () => {
   const fetchUsers = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('http://192.168.1.3:5000/api/getAllUsers');
+      const response = await fetch('https://gym-backend-0o9y.onrender.com/api/getAllUsers');
 
       // Check if response status is okay
       if (!response.ok) {
@@ -105,7 +105,7 @@ const AdminDashboard = () => {
         }
       };
 
-      const response = await fetch('http://192.168.1.3:5000/api/addworkout', {
+      const response = await fetch('https://gym-backend-0o9y.onrender.com/api/addworkout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -141,7 +141,7 @@ const AdminDashboard = () => {
 
   const handleDeleteUser = async (userId) => {
     try {
-      const response = await fetch(`http://192.168.1.3:5000/api/deluser/${userId}`, {
+      const response = await fetch(`https://gym-backend-0o9y.onrender.com/api/deluser/${userId}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',

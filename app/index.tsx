@@ -1,4 +1,4 @@
-import React, { useState ,useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -23,6 +23,7 @@ import {
 import BottomBar from './bottombar';
 import { router } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
+import WebView from 'react-native-webview';
 
 const { width, height } = Dimensions.get('window');
 
@@ -36,9 +37,12 @@ const COLORS = {
   lightGray: '#E5E7EB',   
   accent: '#FF6B6B'       
 };
+
 const FitnessHomeScreen = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [videoModalVisible, setVideoModalVisible] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState(null);
 
   const [user] = useState({
   
@@ -82,7 +86,8 @@ useEffect(() => {
         'Barbells',
         'Resistance Bands',
         'Weight Machines'
-      ]
+      ],
+      videoUrl: 'https://www.youtube.com/embed/H1F-UfC8Mb8?si=tFGKoWFZzYda2y9l'
     },
     { 
       name: 'Cardio', 
@@ -100,7 +105,8 @@ useEffect(() => {
         'Jump Rope',
         'Stationary Bike',
         'Elliptical Machine'
-      ]
+      ],
+      videoUrl: 'https://www.youtube.com/watch?v=dj03_VDetdw&pp=ygUSY2FyZGlvIGd5bSB3b3Jrb3V0'
     },
     { 
       name: 'Yoga', 
@@ -118,7 +124,8 @@ useEffect(() => {
         'Yoga Blocks',
         'Yoga Strap',
         'Meditation Cushion'
-      ]
+      ],
+      videoUrl: 'https://www.youtube.com/embed/v7AYKMP6rOE?si=g-hnXc_BlR-tTGvV'
     },
     { 
       name: 'HIIT', 
@@ -136,7 +143,8 @@ useEffect(() => {
         'Resistance Bands',
         'Kettlebells',
         'Jump Rope'
-      ]
+      ],
+      videoUrl: 'https://youtube.com/watch?v=J212vz33gU4'
     }
   ];
 
@@ -155,7 +163,6 @@ useEffect(() => {
     setSelectedCategory(category);
     setModalVisible(true);
   };
-
   const renderCategoryModal = () => {
     if (!selectedCategory) return null;
 
@@ -215,13 +222,43 @@ useEffect(() => {
             <TouchableOpacity 
               style={styles.startWorkoutButton}
               onPress={() => {
-                // TODO: Navigate to workout details or start workout
                 setModalVisible(false);
+                setSelectedVideo(selectedCategory.videoUrl);
+                setVideoModalVisible(true);
               }}
             >
               <Text style={styles.startWorkoutText}>Start {selectedCategory.name} Workout</Text>
             </TouchableOpacity>
           </LinearGradient>
+        </View>
+      </Modal>
+    );
+  };
+
+
+  const renderVideoModal = () => {
+    return (
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={videoModalVisible}
+        onRequestClose={() => setVideoModalVisible(false)}
+      >
+        <View style={styles.videoModalContainer}>
+          <TouchableOpacity 
+            style={styles.closeVideoButton} 
+            onPress={() => setVideoModalVisible(false)}
+          >
+            <Ionicons name="close" size={30} color={COLORS.text} />
+          </TouchableOpacity>
+          
+          <WebView
+            source={{ 
+              uri: selectedVideo 
+            }}
+            style={styles.videoPlayer}
+            allowsFullscreenVideo={true}
+          />
         </View>
       </Modal>
     );
@@ -389,11 +426,28 @@ useEffect(() => {
         </LinearGradient>
       </ImageBackground>
       {renderCategoryModal()}
+      {renderVideoModal()}
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  videoModalContainer: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeVideoButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 20,
+    right: 20,
+    zIndex: 10,
+  },
+  videoPlayer: {
+    width: width,
+    height: height,
+  },
   modalContainer: {
     flex: 1,
     justifyContent: 'flex-end',

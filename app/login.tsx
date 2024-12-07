@@ -41,7 +41,7 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://192.168.1.3:5000/api/loginuser', {
+      const response = await fetch('https://gym-backend-0o9y.onrender.com/api/loginuser', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
